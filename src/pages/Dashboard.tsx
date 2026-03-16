@@ -1,4 +1,4 @@
-import { TrendingUp, ChevronDown, ChevronRight, MapPin, Search } from 'lucide-react';
+import { TrendingUp, ChevronDown, MapPin, Search } from 'lucide-react';
 import { analyticsStats, assetBreakdown } from '../data/mockData';
 
 function formatNumber(n: number) {
