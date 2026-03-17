@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react';
-import { Search, Download, Plus, MoreHorizontal } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Download, Plus, MoreHorizontal, X } from 'lucide-react';
 import { buildings, buildingStats } from '../data/mockData';
 import { allRegionNames, getDistrictsForRegions } from '../data/ghana';
 import FilterDropdown from '../components/FilterDropdown';
+import Pagination from '../components/Pagination';
 import type { Building } from '../types';
+
+const PAGE_SIZE = 10;
 
 function StatusBadge({ status }: { status: Building['status'] }) {
   const colors: Record<Building['status'], string> = {
@@ -41,19 +44,21 @@ export default function Buildings() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState('Newest');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [regionFilter, setRegionFilter] = useState<Set<string>>(new Set());
   const [districtFilter, setDistrictFilter] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [tagFilter, setTagFilter] = useState<Set<string>>(new Set());
 
-  // Districts list reacts to selected regions
   const availableDistricts = useMemo(
     () => getDistrictsForRegions(Array.from(regionFilter)),
     [regionFilter]
   );
 
-  // When regions change, drop any district selections no longer in scope
+  // Reset to page 1 whenever filters or search change
+  useEffect(() => { setCurrentPage(1); }, [search, regionFilter, districtFilter, statusFilter, tagFilter]);
+
   function handleRegionChange(updated: Set<string>) {
     setRegionFilter(updated);
     const validDistricts = getDistrictsForRegions(Array.from(updated));
@@ -66,22 +71,20 @@ export default function Buildings() {
         b.slrn.toLowerCase().includes(search.toLowerCase()) ||
         b.address.toLowerCase().includes(search.toLowerCase()) ||
         b.region.toLowerCase().includes(search.toLowerCase());
-
       const matchRegion =
         regionFilter.size === 0 ||
         [...regionFilter].some((r) => b.region.toUpperCase().includes(r.toUpperCase()));
-
       const matchDistrict =
         districtFilter.size === 0 ||
         [...districtFilter].some((d) => b.district.toLowerCase().includes(d.toLowerCase()));
-
       const matchStatus = statusFilter.size === 0 || statusFilter.has(b.status);
-
       const matchTag = tagFilter.size === 0 || tagFilter.has(b.tag);
-
       return matchSearch && matchRegion && matchDistrict && matchStatus && matchTag;
     });
   }, [search, regionFilter, districtFilter, statusFilter, tagFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const activeFilterCount =
     regionFilter.size + districtFilter.size + statusFilter.size + tagFilter.size;
@@ -103,10 +106,10 @@ export default function Buildings() {
   }
 
   function toggleAll() {
-    if (selected.size === filtered.length) {
+    if (selected.size === paginated.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(filtered.map((b) => b.id)));
+      setSelected(new Set(paginated.map((b) => b.id)));
     }
   }
 
@@ -133,6 +136,7 @@ export default function Buildings() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         {/* Search + actions */}
         <div className="flex items-center gap-3 p-4 border-b border-gray-100 flex-wrap">
+          {/* Search with clear button */}
           <div className="flex items-center gap-2 flex-1 max-w-xs border border-gray-200 rounded-lg px-3 py-2">
             <Search size={14} className="text-gray-400 shrink-0" />
             <input
@@ -141,6 +145,11 @@ export default function Buildings() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-gray-300 hover:text-gray-500">
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -178,37 +187,12 @@ export default function Buildings() {
         {/* Filter row */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-wrap">
           <span className="text-sm text-gray-500 font-medium">Filter</span>
-
-          <FilterDropdown
-            label="Regions"
-            options={allRegionNames}
-            selected={regionFilter}
-            onChange={handleRegionChange}
-          />
-          <FilterDropdown
-            label="Districts"
-            options={availableDistricts}
-            selected={districtFilter}
-            onChange={setDistrictFilter}
-          />
-          <FilterDropdown
-            label="Status"
-            options={STATUS_OPTIONS}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-          />
-          <FilterDropdown
-            label="Tag"
-            options={TAG_OPTIONS}
-            selected={tagFilter}
-            onChange={setTagFilter}
-          />
-
+          <FilterDropdown label="Regions" options={allRegionNames} selected={regionFilter} onChange={handleRegionChange} />
+          <FilterDropdown label="Districts" options={availableDistricts} selected={districtFilter} onChange={setDistrictFilter} />
+          <FilterDropdown label="Status" options={STATUS_OPTIONS} selected={statusFilter} onChange={setStatusFilter} />
+          <FilterDropdown label="Tag" options={TAG_OPTIONS} selected={tagFilter} onChange={setTagFilter} />
           {activeFilterCount > 0 && (
-            <button
-              onClick={clearAllFilters}
-              className="ml-1 text-xs text-red-500 hover:text-red-600 underline underline-offset-2"
-            >
+            <button onClick={clearAllFilters} className="ml-1 text-xs text-red-500 hover:text-red-600 underline underline-offset-2">
               Clear all filters
             </button>
           )}
@@ -217,34 +201,10 @@ export default function Buildings() {
         {/* Active filter chips */}
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-gray-100">
-            {[...regionFilter].map((v) => (
-              <Chip key={`r-${v}`} label={v} onRemove={() => {
-                const next = new Set(regionFilter);
-                next.delete(v);
-                handleRegionChange(next);
-              }} />
-            ))}
-            {[...districtFilter].map((v) => (
-              <Chip key={`d-${v}`} label={v} onRemove={() => {
-                const next = new Set(districtFilter);
-                next.delete(v);
-                setDistrictFilter(next);
-              }} />
-            ))}
-            {[...statusFilter].map((v) => (
-              <Chip key={`s-${v}`} label={v} onRemove={() => {
-                const next = new Set(statusFilter);
-                next.delete(v);
-                setStatusFilter(next);
-              }} />
-            ))}
-            {[...tagFilter].map((v) => (
-              <Chip key={`t-${v}`} label={v} onRemove={() => {
-                const next = new Set(tagFilter);
-                next.delete(v);
-                setTagFilter(next);
-              }} />
-            ))}
+            {[...regionFilter].map((v) => (<Chip key={`r-${v}`} label={v} onRemove={() => { const n = new Set(regionFilter); n.delete(v); handleRegionChange(n); }} />))}
+            {[...districtFilter].map((v) => (<Chip key={`d-${v}`} label={v} onRemove={() => { const n = new Set(districtFilter); n.delete(v); setDistrictFilter(n); }} />))}
+            {[...statusFilter].map((v) => (<Chip key={`s-${v}`} label={v} onRemove={() => { const n = new Set(statusFilter); n.delete(v); setStatusFilter(n); }} />))}
+            {[...tagFilter].map((v) => (<Chip key={`t-${v}`} label={v} onRemove={() => { const n = new Set(tagFilter); n.delete(v); setTagFilter(n); }} />))}
           </div>
         )}
 
@@ -257,53 +217,32 @@ export default function Buildings() {
                   <input
                     type="checkbox"
                     className="rounded"
-                    checked={selected.size === filtered.length && filtered.length > 0}
+                    checked={selected.size === paginated.length && paginated.length > 0}
                     onChange={toggleAll}
                   />
                 </th>
-                {[
-                  'BUILDING SLRN', 'ADDRESS', 'CONNECTED ACCOUNTS', 'REGION',
-                  'DISTRICT', 'FEEDER NAME', 'DT NAME', 'STATUS', 'TAG', '',
-                ].map((col) => (
-                  <th
-                    key={col}
-                    className="px-3 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"
-                  >
+                {['BUILDING SLRN', 'ADDRESS', 'CONNECTED ACCOUNTS', 'REGION', 'DISTRICT', 'FEEDER NAME', 'DT NAME', 'STATUS', 'TAG', ''].map((col) => (
+                  <th key={col} className="px-3 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
                     {col}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((building) => (
+              {paginated.map((building) => (
                 <tr key={building.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      className="rounded"
-                      checked={selected.has(building.id)}
-                      onChange={() => toggleSelect(building.id)}
-                    />
+                    <input type="checkbox" className="rounded" checked={selected.has(building.id)} onChange={() => toggleSelect(building.id)} />
                   </td>
-                  <td className="px-3 py-3 font-medium text-gray-700 whitespace-nowrap">
-                    {building.slrn}
-                  </td>
-                  <td className="px-3 py-3 text-gray-500 max-w-[200px] truncate">
-                    {building.address}
-                  </td>
-                  <td className="px-3 py-3 text-gray-700 text-center">
-                    {building.connectedAccounts}
-                  </td>
+                  <td className="px-3 py-3 font-medium text-gray-700 whitespace-nowrap">{building.slrn}</td>
+                  <td className="px-3 py-3 text-gray-500 max-w-[200px] truncate">{building.address}</td>
+                  <td className="px-3 py-3 text-gray-700 text-center">{building.connectedAccounts}</td>
                   <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.region}</td>
                   <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.district}</td>
                   <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.feederName}</td>
                   <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.dtName}</td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={building.status} />
-                  </td>
-                  <td className="px-3 py-3">
-                    <TagBadge tag={building.tag} />
-                  </td>
+                  <td className="px-3 py-3"><StatusBadge status={building.status} /></td>
+                  <td className="px-3 py-3"><TagBadge tag={building.tag} /></td>
                   <td className="px-3 py-3">
                     <button className="p-1 rounded hover:bg-gray-100">
                       <MoreHorizontal size={16} className="text-gray-400" />
@@ -321,22 +260,13 @@ export default function Buildings() {
           )}
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-400">
-          <span>Showing {filtered.length} of {buildings.length} results</span>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, '...', 10].map((p, i) => (
-              <button
-                key={i}
-                className={`w-7 h-7 rounded text-xs font-medium ${
-                  p === 1 ? 'bg-[#1a6b4a] text-white' : 'text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );
@@ -346,9 +276,7 @@ function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="flex items-center gap-1 bg-[#e8f5f0] text-[#1a6b4a] text-xs font-medium px-2 py-0.5 rounded-full">
       {label}
-      <button onClick={onRemove} className="hover:text-red-500 transition-colors">
-        ×
-      </button>
+      <button onClick={onRemove} className="hover:text-red-500 transition-colors">×</button>
     </span>
   );
 }
