@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Search, Download, ChevronDown, RotateCcw, MoreHorizontal } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, Download, RotateCcw, MoreHorizontal } from 'lucide-react';
 import { customers, customerStats } from '../data/mockData';
+import { allRegionNames, getDistrictsForRegions } from '../data/ghana';
+import FilterDropdown from '../components/FilterDropdown';
 import type { Customer } from '../types';
 
 function StatusBadge({ status }: { status: Customer['status'] }) {
@@ -17,12 +19,8 @@ function StatusBadge({ status }: { status: Customer['status'] }) {
 }
 
 function TagBadge({ tag }: { tag: Customer['tag'] }) {
-  const colors: Record<Customer['tag'], string> = {
-    Existing: 'bg-[#e8f5f0] text-[#1a6b4a]',
-    'New entry': 'bg-[#e8f5f0] text-[#1a6b4a]',
-  };
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[tag]}`}>
+    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e8f5f0] text-[#1a6b4a]">
       {tag}
     </span>
   );
@@ -36,29 +34,63 @@ const statCards = [
   { label: 'Unvalidated', value: customerStats.unvalidated, highlight: false },
 ];
 
-const filterOptions = [
-  'Regions',
-  'Districts',
-  'Tariff',
-  'Service type',
-  'Status',
-  'Tag',
-  'Slt status',
-  'Use of premises',
-];
+const STATUS_OPTIONS = ['Pending', 'Active', 'Inactive'];
+const TAG_OPTIONS = ['New entry', 'Existing'];
 
 export default function Customers() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState('Newest');
 
-  const filtered = customers.filter(
-    (c) =>
-      c.slrn.toLowerCase().includes(search.toLowerCase()) ||
-      c.buildingOwner.toLowerCase().includes(search.toLowerCase()) ||
-      c.address.toLowerCase().includes(search.toLowerCase()) ||
-      c.region.toLowerCase().includes(search.toLowerCase())
+  const [regionFilter, setRegionFilter] = useState<Set<string>>(new Set());
+  const [districtFilter, setDistrictFilter] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
+  const [tagFilter, setTagFilter] = useState<Set<string>>(new Set());
+
+  const availableDistricts = useMemo(
+    () => getDistrictsForRegions(Array.from(regionFilter)),
+    [regionFilter]
   );
+
+  function handleRegionChange(updated: Set<string>) {
+    setRegionFilter(updated);
+    const validDistricts = getDistrictsForRegions(Array.from(updated));
+    setDistrictFilter((prev) => new Set([...prev].filter((d) => validDistricts.includes(d))));
+  }
+
+  const filtered = useMemo(() => {
+    return customers.filter((c) => {
+      const matchSearch =
+        c.slrn.toLowerCase().includes(search.toLowerCase()) ||
+        c.buildingOwner.toLowerCase().includes(search.toLowerCase()) ||
+        c.address.toLowerCase().includes(search.toLowerCase()) ||
+        c.region.toLowerCase().includes(search.toLowerCase());
+
+      const matchRegion =
+        regionFilter.size === 0 ||
+        [...regionFilter].some((r) => c.region.toUpperCase().includes(r.toUpperCase()));
+
+      const matchDistrict =
+        districtFilter.size === 0 ||
+        [...districtFilter].some((d) => c.district.toLowerCase().includes(d.toLowerCase()));
+
+      const matchStatus = statusFilter.size === 0 || statusFilter.has(c.status);
+
+      const matchTag = tagFilter.size === 0 || tagFilter.has(c.tag);
+
+      return matchSearch && matchRegion && matchDistrict && matchStatus && matchTag;
+    });
+  }, [search, regionFilter, districtFilter, statusFilter, tagFilter]);
+
+  const activeFilterCount =
+    regionFilter.size + districtFilter.size + statusFilter.size + tagFilter.size;
+
+  function clearAllFilters() {
+    setRegionFilter(new Set());
+    setDistrictFilter(new Set());
+    setStatusFilter(new Set());
+    setTagFilter(new Set());
+  }
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -139,16 +171,75 @@ export default function Customers() {
         {/* Filter row */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-wrap">
           <span className="text-sm text-gray-500 font-medium">Filter</span>
-          {filterOptions.map((f) => (
+
+          <FilterDropdown
+            label="Regions"
+            options={allRegionNames}
+            selected={regionFilter}
+            onChange={handleRegionChange}
+          />
+          <FilterDropdown
+            label="Districts"
+            options={availableDistricts}
+            selected={districtFilter}
+            onChange={setDistrictFilter}
+          />
+          <FilterDropdown
+            label="Status"
+            options={STATUS_OPTIONS}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+          />
+          <FilterDropdown
+            label="Tag"
+            options={TAG_OPTIONS}
+            selected={tagFilter}
+            onChange={setTagFilter}
+          />
+
+          {activeFilterCount > 0 && (
             <button
-              key={f}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50"
+              onClick={clearAllFilters}
+              className="ml-1 text-xs text-red-500 hover:text-red-600 underline underline-offset-2"
             >
-              {f}
-              <ChevronDown size={12} />
+              Clear all filters
             </button>
-          ))}
+          )}
         </div>
+
+        {/* Active filter chips */}
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-gray-100">
+            {[...regionFilter].map((v) => (
+              <Chip key={`r-${v}`} label={v} onRemove={() => {
+                const next = new Set(regionFilter);
+                next.delete(v);
+                handleRegionChange(next);
+              }} />
+            ))}
+            {[...districtFilter].map((v) => (
+              <Chip key={`d-${v}`} label={v} onRemove={() => {
+                const next = new Set(districtFilter);
+                next.delete(v);
+                setDistrictFilter(next);
+              }} />
+            ))}
+            {[...statusFilter].map((v) => (
+              <Chip key={`s-${v}`} label={v} onRemove={() => {
+                const next = new Set(statusFilter);
+                next.delete(v);
+                setStatusFilter(next);
+              }} />
+            ))}
+            {[...tagFilter].map((v) => (
+              <Chip key={`t-${v}`} label={v} onRemove={() => {
+                const next = new Set(tagFilter);
+                next.delete(v);
+                setTagFilter(next);
+              }} />
+            ))}
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -164,19 +255,8 @@ export default function Customers() {
                   />
                 </th>
                 {[
-                  'SLRN',
-                  'BUILDING OWNER',
-                  'ACCT. NO.',
-                  'METER NO.',
-                  'DT NAME',
-                  'ADDRESS.',
-                  'REGION',
-                  'DISTRICT',
-                  'TARIFF',
-                  'STATUS',
-                  'TAG',
-                  '',
-                  '',
+                  'SLRN', 'BUILDING OWNER', 'ACCT. NO.', 'METER NO.', 'DT NAME',
+                  'ADDRESS.', 'REGION', 'DISTRICT', 'TARIFF', 'STATUS', 'TAG', '', '',
                 ].map((col, i) => (
                   <th
                     key={`${col}-${i}`}
@@ -198,39 +278,17 @@ export default function Customers() {
                       onChange={() => toggleSelect(customer.id)}
                     />
                   </td>
-                  <td className="px-3 py-3 font-medium text-gray-700 whitespace-nowrap">
-                    {customer.slrn}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {customer.buildingOwner}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {customer.acctNo}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {customer.meterNo}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {customer.dtName}
-                  </td>
-                  <td className="px-3 py-3 text-gray-500 whitespace-nowrap">
-                    {customer.address}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {customer.region}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {customer.district}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap text-xs">
-                    {customer.tariff}
-                  </td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={customer.status} />
-                  </td>
-                  <td className="px-3 py-3">
-                    <TagBadge tag={customer.tag} />
-                  </td>
+                  <td className="px-3 py-3 font-medium text-gray-700 whitespace-nowrap">{customer.slrn}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{customer.buildingOwner}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{customer.acctNo}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{customer.meterNo}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{customer.dtName}</td>
+                  <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{customer.address}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{customer.region}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{customer.district}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap text-xs">{customer.tariff}</td>
+                  <td className="px-3 py-3"><StatusBadge status={customer.status} /></td>
+                  <td className="px-3 py-3"><TagBadge tag={customer.tag} /></td>
                   <td className="px-3 py-3">
                     <button className="p-1 rounded hover:bg-gray-100" title="History">
                       <RotateCcw size={15} className="text-gray-400" />
@@ -248,7 +306,7 @@ export default function Customers() {
 
           {filtered.length === 0 && (
             <div className="py-12 text-center text-gray-400 text-sm">
-              No customers match your search.
+              No customers match the selected filters.
             </div>
           )}
         </div>
@@ -261,9 +319,7 @@ export default function Customers() {
               <button
                 key={i}
                 className={`w-7 h-7 rounded text-xs font-medium ${
-                  p === 1
-                    ? 'bg-[#1a6b4a] text-white'
-                    : 'text-gray-500 hover:bg-gray-100'
+                  p === 1 ? 'bg-[#1a6b4a] text-white' : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 {p}
@@ -273,5 +329,16 @@ export default function Customers() {
         </div>
       </div>
     </div>
+  );
+}
+
+function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="flex items-center gap-1 bg-[#e8f5f0] text-[#1a6b4a] text-xs font-medium px-2 py-0.5 rounded-full">
+      {label}
+      <button onClick={onRemove} className="hover:text-red-500 transition-colors">
+        ×
+      </button>
+    </span>
   );
 }
