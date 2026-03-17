@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Search, Download, RotateCcw, MoreHorizontal } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Download, RotateCcw, MoreHorizontal, X } from 'lucide-react';
 import { customers, customerStats } from '../data/mockData';
 import { allRegionNames, getDistrictsForRegions } from '../data/ghana';
 import FilterDropdown from '../components/FilterDropdown';
+import Pagination from '../components/Pagination';
+
+const PAGE_SIZE = 10;
 import type { Customer } from '../types';
 
 function StatusBadge({ status }: { status: Customer['status'] }) {
@@ -41,6 +44,7 @@ export default function Customers() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState('Newest');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [regionFilter, setRegionFilter] = useState<Set<string>>(new Set());
   const [districtFilter, setDistrictFilter] = useState<Set<string>>(new Set());
@@ -51,6 +55,8 @@ export default function Customers() {
     () => getDistrictsForRegions(Array.from(regionFilter)),
     [regionFilter]
   );
+
+  useEffect(() => { setCurrentPage(1); }, [search, regionFilter, districtFilter, statusFilter, tagFilter]);
 
   function handleRegionChange(updated: Set<string>) {
     setRegionFilter(updated);
@@ -82,6 +88,9 @@ export default function Customers() {
     });
   }, [search, regionFilter, districtFilter, statusFilter, tagFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const activeFilterCount =
     regionFilter.size + districtFilter.size + statusFilter.size + tagFilter.size;
 
@@ -102,10 +111,10 @@ export default function Customers() {
   }
 
   function toggleAll() {
-    if (selected.size === filtered.length) {
+    if (selected.size === paginated.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(filtered.map((c) => c.id)));
+      setSelected(new Set(paginated.map((c) => c.id)));
     }
   }
 
@@ -140,6 +149,11 @@ export default function Customers() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-gray-300 hover:text-gray-500">
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -250,7 +264,7 @@ export default function Customers() {
                   <input
                     type="checkbox"
                     className="rounded"
-                    checked={selected.size === filtered.length && filtered.length > 0}
+                    checked={selected.size === paginated.length && paginated.length > 0}
                     onChange={toggleAll}
                   />
                 </th>
@@ -268,7 +282,7 @@ export default function Customers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((customer) => (
+              {paginated.map((customer) => (
                 <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
                     <input
@@ -311,22 +325,13 @@ export default function Customers() {
           )}
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-400">
-          <span>Showing {filtered.length} of {customers.length} results</span>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, '...', 10].map((p, i) => (
-              <button
-                key={i}
-                className={`w-7 h-7 rounded text-xs font-medium ${
-                  p === 1 ? 'bg-[#1a6b4a] text-white' : 'text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );
