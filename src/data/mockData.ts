@@ -235,7 +235,7 @@ export const customers: Customer[] = [
     region: 'ASHANTI',
     district: 'Kumasi Metro District',
     tariff: 'Residential (prepayment)',
-    status: 'Active',
+    status: 'Complete',
     tag: 'Existing',
   },
   {
@@ -249,7 +249,7 @@ export const customers: Customer[] = [
     region: 'GREATER ACCRA',
     district: 'Tema Metro District',
     tariff: 'Commercial (prepayment)',
-    status: 'Active',
+    status: 'Complete',
     tag: 'New entry',
   },
   {
@@ -277,7 +277,7 @@ export const customers: Customer[] = [
     region: 'VOLTA',
     district: 'Ho Municipal District',
     tariff: 'Residential (prepayment)',
-    status: 'Inactive',
+    status: 'Incomplete',
     tag: 'Existing',
   },
   {
@@ -291,7 +291,7 @@ export const customers: Customer[] = [
     region: 'BRONG AHAFO',
     district: 'Sunyani Municipal District',
     tariff: 'Commercial (postpaid)',
-    status: 'Active',
+    status: 'Complete',
     tag: 'New entry',
   },
 ];
