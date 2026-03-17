@@ -59,7 +59,7 @@ export const ghanaRegions: Region[] = [
       'Ho Municipal', 'Hohoe Municipal', 'Keta Municipal', 'Kpando Municipal',
       'Agotime-Ziope', 'Afadjato South', 'Biakoye', 'Central Tongu',
       'North Tongu', 'South Tongu', 'Adaklu', 'Akatsi North', 'Akatsi South',
-      'Ave Avenor', 'Ketu North', 'Ketu South', 'Krachi East', 'Nkwanta North',
+      'Ave Avenor', 'Ketu North', 'Ketu South', 'Nkwanta North',
     ],
   },
   {
@@ -103,7 +103,7 @@ export const ghanaRegions: Region[] = [
   {
     name: 'Ahafo',
     districts: [
-      'Goaso', 'Asutifi North', 'Asutifi South', 'Asunafo North', 'Asunafo South', 'Tano North',
+      'Goaso', 'Asutifi North', 'Asutifi South', 'Asunafo North', 'Asunafo South',
     ],
   },
   {
@@ -139,10 +139,9 @@ export const ghanaRegions: Region[] = [
 export const allRegionNames = ghanaRegions.map((r) => r.name);
 
 export function getDistrictsForRegions(selectedRegions: string[]): string[] {
-  if (selectedRegions.length === 0) {
-    return ghanaRegions.flatMap((r) => r.districts);
-  }
-  return ghanaRegions
-    .filter((r) => selectedRegions.includes(r.name))
-    .flatMap((r) => r.districts);
+  const source =
+    selectedRegions.length === 0
+      ? ghanaRegions
+      : ghanaRegions.filter((r) => selectedRegions.includes(r.name));
+  return [...new Set(source.flatMap((r) => r.districts))];
 }
