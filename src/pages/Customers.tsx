@@ -7,8 +7,8 @@ import type { Customer } from '../types';
 
 function StatusBadge({ status }: { status: Customer['status'] }) {
   const colors: Record<Customer['status'], string> = {
-    Active: 'bg-green-100 text-green-700',
-    Inactive: 'bg-red-100 text-red-600',
+    Complete: 'bg-green-100 text-green-700',
+    Incomplete: 'bg-red-100 text-red-600',
     Pending: 'bg-gray-100 text-gray-500',
   };
   return (
@@ -34,7 +34,7 @@ const statCards = [
   { label: 'Unvalidated', value: customerStats.unvalidated, highlight: false },
 ];
 
-const STATUS_OPTIONS = ['Pending', 'Active', 'Inactive'];
+const STATUS_OPTIONS = ['Pending', 'Complete', 'Incomplete'];
 const TAG_OPTIONS = ['New entry', 'Existing'];
 
 export default function Customers() {
