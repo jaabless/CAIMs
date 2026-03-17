@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Search, Download, Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, Download, Plus, MoreHorizontal } from 'lucide-react';
 import { buildings, buildingStats } from '../data/mockData';
+import { allRegionNames, getDistrictsForRegions } from '../data/ghana';
+import FilterDropdown from '../components/FilterDropdown';
 import type { Building } from '../types';
 
 function StatusBadge({ status }: { status: Building['status'] }) {
@@ -32,17 +34,64 @@ const statCards = [
   { label: 'Total number of meters', value: buildingStats.totalMeters, highlight: false },
 ];
 
+const STATUS_OPTIONS = ['Complete', 'Incomplete', 'Pending'];
+const TAG_OPTIONS = ['New entry', 'Existing'];
+
 export default function Buildings() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState('Newest');
 
-  const filtered = buildings.filter(
-    (b) =>
-      b.slrn.toLowerCase().includes(search.toLowerCase()) ||
-      b.address.toLowerCase().includes(search.toLowerCase()) ||
-      b.region.toLowerCase().includes(search.toLowerCase())
+  const [regionFilter, setRegionFilter] = useState<Set<string>>(new Set());
+  const [districtFilter, setDistrictFilter] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
+  const [tagFilter, setTagFilter] = useState<Set<string>>(new Set());
+
+  // Districts list reacts to selected regions
+  const availableDistricts = useMemo(
+    () => getDistrictsForRegions(Array.from(regionFilter)),
+    [regionFilter]
   );
+
+  // When regions change, drop any district selections no longer in scope
+  function handleRegionChange(updated: Set<string>) {
+    setRegionFilter(updated);
+    const validDistricts = getDistrictsForRegions(Array.from(updated));
+    setDistrictFilter((prev) => new Set([...prev].filter((d) => validDistricts.includes(d))));
+  }
+
+  const filtered = useMemo(() => {
+    return buildings.filter((b) => {
+      const matchSearch =
+        b.slrn.toLowerCase().includes(search.toLowerCase()) ||
+        b.address.toLowerCase().includes(search.toLowerCase()) ||
+        b.region.toLowerCase().includes(search.toLowerCase());
+
+      const matchRegion =
+        regionFilter.size === 0 ||
+        [...regionFilter].some((r) => b.region.toUpperCase().includes(r.toUpperCase()));
+
+      const matchDistrict =
+        districtFilter.size === 0 ||
+        [...districtFilter].some((d) => b.district.toLowerCase().includes(d.toLowerCase()));
+
+      const matchStatus = statusFilter.size === 0 || statusFilter.has(b.status);
+
+      const matchTag = tagFilter.size === 0 || tagFilter.has(b.tag);
+
+      return matchSearch && matchRegion && matchDistrict && matchStatus && matchTag;
+    });
+  }, [search, regionFilter, districtFilter, statusFilter, tagFilter]);
+
+  const activeFilterCount =
+    regionFilter.size + districtFilter.size + statusFilter.size + tagFilter.size;
+
+  function clearAllFilters() {
+    setRegionFilter(new Set());
+    setDistrictFilter(new Set());
+    setStatusFilter(new Set());
+    setTagFilter(new Set());
+  }
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -68,10 +117,8 @@ export default function Buildings() {
         {statCards.map((card) => (
           <div
             key={card.label}
-            className={`rounded-xl p-4 border ${
-              card.highlight
-                ? 'border-[#1a6b4a] bg-white'
-                : 'border-gray-100 bg-white'
+            className={`rounded-xl p-4 border bg-white ${
+              card.highlight ? 'border-[#1a6b4a]' : 'border-gray-100'
             }`}
           >
             <p className="text-xs text-gray-400 mb-1">{card.label}</p>
@@ -82,12 +129,12 @@ export default function Buildings() {
         ))}
       </div>
 
-      {/* Controls */}
+      {/* Table card */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         {/* Search + actions */}
-        <div className="flex items-center gap-3 p-4 border-b border-gray-100">
+        <div className="flex items-center gap-3 p-4 border-b border-gray-100 flex-wrap">
           <div className="flex items-center gap-2 flex-1 max-w-xs border border-gray-200 rounded-lg px-3 py-2">
-            <Search size={14} className="text-gray-400" />
+            <Search size={14} className="text-gray-400 shrink-0" />
             <input
               className="text-sm outline-none flex-1 text-gray-600 placeholder:text-gray-300"
               placeholder="Search"
@@ -96,7 +143,6 @@ export default function Buildings() {
             />
           </div>
 
-          {/* Date range */}
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span>From:</span>
             <input type="date" className="border border-gray-200 rounded px-2 py-1 text-xs" />
@@ -104,7 +150,6 @@ export default function Buildings() {
             <input type="date" className="border border-gray-200 rounded px-2 py-1 text-xs" />
           </div>
 
-          {/* Sort */}
           <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600">
             <span>Sort by:</span>
             <select
@@ -131,18 +176,77 @@ export default function Buildings() {
         </div>
 
         {/* Filter row */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-wrap">
           <span className="text-sm text-gray-500 font-medium">Filter</span>
-          {['Regions', 'Districts', 'Status', 'Tag'].map((f) => (
+
+          <FilterDropdown
+            label="Regions"
+            options={allRegionNames}
+            selected={regionFilter}
+            onChange={handleRegionChange}
+          />
+          <FilterDropdown
+            label="Districts"
+            options={availableDistricts}
+            selected={districtFilter}
+            onChange={setDistrictFilter}
+          />
+          <FilterDropdown
+            label="Status"
+            options={STATUS_OPTIONS}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+          />
+          <FilterDropdown
+            label="Tag"
+            options={TAG_OPTIONS}
+            selected={tagFilter}
+            onChange={setTagFilter}
+          />
+
+          {activeFilterCount > 0 && (
             <button
-              key={f}
-              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-500 hover:bg-gray-50"
+              onClick={clearAllFilters}
+              className="ml-1 text-xs text-red-500 hover:text-red-600 underline underline-offset-2"
             >
-              {f}
-              <ChevronDown size={13} />
+              Clear all filters
             </button>
-          ))}
+          )}
         </div>
+
+        {/* Active filter chips */}
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-gray-100">
+            {[...regionFilter].map((v) => (
+              <Chip key={`r-${v}`} label={v} onRemove={() => {
+                const next = new Set(regionFilter);
+                next.delete(v);
+                handleRegionChange(next);
+              }} />
+            ))}
+            {[...districtFilter].map((v) => (
+              <Chip key={`d-${v}`} label={v} onRemove={() => {
+                const next = new Set(districtFilter);
+                next.delete(v);
+                setDistrictFilter(next);
+              }} />
+            ))}
+            {[...statusFilter].map((v) => (
+              <Chip key={`s-${v}`} label={v} onRemove={() => {
+                const next = new Set(statusFilter);
+                next.delete(v);
+                setStatusFilter(next);
+              }} />
+            ))}
+            {[...tagFilter].map((v) => (
+              <Chip key={`t-${v}`} label={v} onRemove={() => {
+                const next = new Set(tagFilter);
+                next.delete(v);
+                setTagFilter(next);
+              }} />
+            ))}
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -158,16 +262,8 @@ export default function Buildings() {
                   />
                 </th>
                 {[
-                  'BUILDING SLRN',
-                  'ADDRESS',
-                  'CONNECTED ACCOUNTS',
-                  'REGION',
-                  'DISTRICT',
-                  'FEEDER NAME',
-                  'DT NAME',
-                  'STATUS',
-                  'TAG',
-                  '',
+                  'BUILDING SLRN', 'ADDRESS', 'CONNECTED ACCOUNTS', 'REGION',
+                  'DISTRICT', 'FEEDER NAME', 'DT NAME', 'STATUS', 'TAG', '',
                 ].map((col) => (
                   <th
                     key={col}
@@ -180,10 +276,7 @@ export default function Buildings() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map((building) => (
-                <tr
-                  key={building.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
+                <tr key={building.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
@@ -201,18 +294,10 @@ export default function Buildings() {
                   <td className="px-3 py-3 text-gray-700 text-center">
                     {building.connectedAccounts}
                   </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {building.region}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {building.district}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {building.feederName}
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                    {building.dtName}
-                  </td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.region}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.district}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.feederName}</td>
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{building.dtName}</td>
                   <td className="px-3 py-3">
                     <StatusBadge status={building.status} />
                   </td>
@@ -231,12 +316,12 @@ export default function Buildings() {
 
           {filtered.length === 0 && (
             <div className="py-12 text-center text-gray-400 text-sm">
-              No buildings match your search.
+              No buildings match the selected filters.
             </div>
           )}
         </div>
 
-        {/* Pagination placeholder */}
+        {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-400">
           <span>Showing {filtered.length} of {buildings.length} results</span>
           <div className="flex items-center gap-1">
@@ -244,9 +329,7 @@ export default function Buildings() {
               <button
                 key={i}
                 className={`w-7 h-7 rounded text-xs font-medium ${
-                  p === 1
-                    ? 'bg-[#1a6b4a] text-white'
-                    : 'text-gray-500 hover:bg-gray-100'
+                  p === 1 ? 'bg-[#1a6b4a] text-white' : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 {p}
@@ -256,5 +339,16 @@ export default function Buildings() {
         </div>
       </div>
     </div>
+  );
+}
+
+function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="flex items-center gap-1 bg-[#e8f5f0] text-[#1a6b4a] text-xs font-medium px-2 py-0.5 rounded-full">
+      {label}
+      <button onClick={onRemove} className="hover:text-red-500 transition-colors">
+        ×
+      </button>
+    </span>
   );
 }
