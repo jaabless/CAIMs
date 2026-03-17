@@ -22,7 +22,7 @@ export interface Customer {
   region: string;
   district: string;
   tariff: string;
-  status: 'Pending' | 'Active' | 'Inactive';
+  status: 'Pending' | 'Complete' | 'Incomplete';
   tag: 'Existing' | 'New entry';
 }
 
