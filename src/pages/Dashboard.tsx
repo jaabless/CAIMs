@@ -1,11 +1,28 @@
+import { useState, useMemo } from 'react';
 import { TrendingUp, ChevronDown, MapPin, Search } from 'lucide-react';
 import { analyticsStats, assetBreakdown } from '../data/mockData';
+import { allRegionNames, getDistrictsForRegions } from '../data/ghana';
+import FilterDropdown from '../components/FilterDropdown';
 
 function formatNumber(n: number) {
   return n.toLocaleString();
 }
 
 export default function Dashboard() {
+  const [regionFilter, setRegionFilter] = useState<Set<string>>(new Set());
+  const [districtFilter, setDistrictFilter] = useState<Set<string>>(new Set());
+
+  const availableDistricts = useMemo(
+    () => getDistrictsForRegions(Array.from(regionFilter)),
+    [regionFilter]
+  );
+
+  function handleRegionChange(updated: Set<string>) {
+    setRegionFilter(updated);
+    const validDistricts = getDistrictsForRegions(Array.from(updated));
+    setDistrictFilter((prev) => new Set([...prev].filter((d) => validDistricts.includes(d))));
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -15,17 +32,24 @@ export default function Dashboard() {
       </div>
 
       {/* Filter row */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm text-gray-500">Show:</span>
-        {['Assets', 'Regions', 'Districts'].map((label) => (
-          <button
-            key={label}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50"
-          >
-            {label}
-            <ChevronDown size={14} />
-          </button>
-        ))}
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50">
+          Assets
+          <ChevronDown size={14} />
+        </button>
+        <FilterDropdown
+          label="Regions"
+          options={allRegionNames}
+          selected={regionFilter}
+          onChange={handleRegionChange}
+        />
+        <FilterDropdown
+          label="Districts"
+          options={availableDistricts}
+          selected={districtFilter}
+          onChange={setDistrictFilter}
+        />
       </div>
 
       {/* Analytics Overview */}
