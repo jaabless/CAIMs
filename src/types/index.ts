@@ -26,6 +26,18 @@ export interface Customer {
   tag: 'Existing' | 'New entry';
 }
 
+export interface AppUser {
+  id: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  email: string;
+  sex: 'Male' | 'Female';
+  phone: string;
+  role: string;
+  status: 'Active' | 'Inactive';
+}
+
 export interface AnalyticsStat {
   label: string;
   value: number;
