@@ -34,7 +34,7 @@ export interface AppUser {
   email: string;
   sex: 'Male' | 'Female';
   phone: string;
-  role: string;
+  role: 'Super Admin' | 'Admin' | 'Supervisor' | 'Field Officer';
   status: 'Active' | 'Inactive';
 }
 
