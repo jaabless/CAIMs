@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
-import { Search, Plus, X, MoreHorizontal } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { Search, Plus, X, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { appUsers } from '../data/mockData';
+import { appUsers as initialUsers } from '../data/mockData';
 import type { AppUser } from '../types';
 
 function StatusBadge({ status }: { status: AppUser['status'] }) {
@@ -16,28 +16,88 @@ function StatusBadge({ status }: { status: AppUser['status'] }) {
   );
 }
 
+function RowMenu({
+  user,
+  onEdit,
+  onDelete,
+}: {
+  user: AppUser;
+  onEdit: (u: AppUser) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="p-1 rounded hover:bg-gray-100"
+      >
+        <MoreHorizontal size={16} className="text-gray-400" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-8 w-36 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+          <button
+            onClick={() => { setOpen(false); onEdit(user); }}
+            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <Pencil size={14} className="text-gray-400" />
+            Edit
+          </button>
+          <button
+            onClick={() => { setOpen(false); onDelete(user.id); }}
+            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 size={14} />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function UserManagement() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [users, setUsers] = useState<AppUser[]>(initialUsers);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return appUsers.filter(
+    return users.filter(
       (u) =>
         `${u.firstName} ${u.middleName} ${u.lastName}`.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         u.role.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, users]);
+
+  function handleEdit(user: AppUser) {
+    navigate(`/user-management/edit/${user.id}`, { state: { user } });
+  }
+
+  function handleDelete(id: string) {
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  }
 
   return (
     <div className="space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Users', value: appUsers.length },
-          { label: 'Active', value: appUsers.filter((u) => u.status === 'Active').length },
-          { label: 'Inactive', value: appUsers.filter((u) => u.status === 'Inactive').length },
+          { label: 'Total Users', value: users.length },
+          { label: 'Active', value: users.filter((u) => u.status === 'Active').length },
+          { label: 'Inactive', value: users.filter((u) => u.status === 'Inactive').length },
         ].map((card) => (
           <div key={card.label} className="bg-white rounded-xl border border-gray-100 p-4">
             <p className="text-xs text-gray-400 mb-1">{card.label}</p>
@@ -50,7 +110,6 @@ export default function UserManagement() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         {/* Toolbar */}
         <div className="flex items-center gap-3 p-4 border-b border-gray-100">
-          {/* Search */}
           <div className="flex items-center gap-2 flex-1 max-w-xs border border-gray-200 rounded-lg px-3 py-2">
             <Search size={14} className="text-gray-400 shrink-0" />
             <input
@@ -114,9 +173,7 @@ export default function UserManagement() {
                       <StatusBadge status={user.status} />
                     </td>
                     <td className="px-4 py-3">
-                      <button className="p-1 rounded hover:bg-gray-100">
-                        <MoreHorizontal size={16} className="text-gray-400" />
-                      </button>
+                      <RowMenu user={user} onEdit={handleEdit} onDelete={handleDelete} />
                     </td>
                   </tr>
                 );
