@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
+import type { AppUser } from '../types';
+
+const ROLES: AppUser['role'][] = ['Super Admin', 'Admin', 'Supervisor', 'Field Officer'];
 
 interface FormState {
   firstName: string;
@@ -9,6 +12,8 @@ interface FormState {
   email: string;
   sex: string;
   phone: string;
+  role: string;
+  status: string;
 }
 
 const EMPTY: FormState = {
@@ -18,6 +23,8 @@ const EMPTY: FormState = {
   email: '',
   sex: '',
   phone: '',
+  role: '',
+  status: '',
 };
 
 function Field({
@@ -45,7 +52,27 @@ const inputCls =
 
 export default function CreateUser() {
   const navigate = useNavigate();
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const location = useLocation();
+
+  // If navigated here from Edit, location.state will contain the user
+  const editUser = (location.state as { user?: AppUser } | null)?.user ?? null;
+  const isEdit = editUser !== null;
+
+  const [form, setForm] = useState<FormState>(
+    editUser
+      ? {
+          firstName: editUser.firstName,
+          middleName: editUser.middleName,
+          lastName: editUser.lastName,
+          email: editUser.email,
+          sex: editUser.sex,
+          phone: editUser.phone,
+          role: editUser.role,
+          status: editUser.status,
+        }
+      : EMPTY
+  );
+
   const [submitted, setSubmitted] = useState(false);
 
   function set(field: keyof FormState, value: string) {
@@ -54,7 +81,6 @@ export default function CreateUser() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // In a real app this would POST to an API
     setSubmitted(true);
     setTimeout(() => navigate('/user-management'), 1500);
   }
@@ -65,7 +91,9 @@ export default function CreateUser() {
         <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
           <span className="text-green-600 text-xl">✓</span>
         </div>
-        <p className="text-gray-700 font-medium">User created successfully!</p>
+        <p className="text-gray-700 font-medium">
+          User {isEdit ? 'updated' : 'created'} successfully!
+        </p>
         <p className="text-sm text-gray-400">Redirecting to User Management…</p>
       </div>
     );
@@ -82,8 +110,12 @@ export default function CreateUser() {
           <ChevronLeft size={18} />
         </button>
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Create User</h2>
-          <p className="text-sm text-gray-400 mt-0.5">Add a new user to the system</p>
+          <h2 className="text-xl font-bold text-gray-800">
+            {isEdit ? 'Edit User' : 'Create User'}
+          </h2>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {isEdit ? "Update the user's details below" : 'Add a new user to the system'}
+          </p>
         </div>
       </div>
 
@@ -158,6 +190,35 @@ export default function CreateUser() {
             </Field>
           </div>
 
+          {/* Role + Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Role" required>
+              <select
+                className={inputCls}
+                value={form.role}
+                onChange={(e) => set('role', e.target.value)}
+                required
+              >
+                <option value="" disabled>Select role</option>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Status" required>
+              <select
+                className={inputCls}
+                value={form.status}
+                onChange={(e) => set('status', e.target.value)}
+                required
+              >
+                <option value="" disabled>Select status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </Field>
+          </div>
+
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
@@ -171,7 +232,7 @@ export default function CreateUser() {
               type="submit"
               className="px-5 py-2.5 rounded-lg bg-[#1a6b4a] hover:bg-[#155c3e] text-white text-sm font-semibold transition"
             >
-              Create User
+              {isEdit ? 'Update User' : 'Create User'}
             </button>
           </div>
         </form>
