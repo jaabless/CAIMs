@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Buildings from './pages/Buildings';
 import Customers from './pages/Customers';
 import Profile from './pages/Profile';
+import UserManagement from './pages/UserManagement';
+import CreateUser from './pages/CreateUser';
 
 function ComingSoon({ page }: { page: string }) {
   return (
@@ -41,7 +43,8 @@ function ProtectedRoutes() {
         <Route path="/surveys" element={<ComingSoon page="Surveys" />} />
         <Route path="/installations" element={<ComingSoon page="Installations" />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/user-management" element={<ComingSoon page="User Management" />} />
+        <Route path="/user-management" element={<UserManagement />} />
+        <Route path="/user-management/create" element={<CreateUser />} />
         <Route path="/role-management" element={<ComingSoon page="Role Management" />} />
         <Route path="/crud-settings" element={<ComingSoon page="CRUD Settings" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
