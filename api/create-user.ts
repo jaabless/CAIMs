@@ -76,7 +76,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             <p style="margin:4px 0;font-size:14px;color:#111827;"><strong>Role:</strong> ${role}</p>
           </div>
 
-          <p style="color:#6b7280;font-size:13px;margin:0;">
+          <a href="https://caims.vercel.app/login" style="display:block;text-align:center;margin:20px 0 4px;padding:12px;background:#1a6b4a;color:white;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
+            Log in to CAIMs
+          </a>
+
+          <p style="color:#6b7280;font-size:13px;margin:16px 0 0;">
             This is an automated message. Please do not reply to this email.
           </p>
         </div>
