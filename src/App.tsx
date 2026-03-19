@@ -45,6 +45,7 @@ function ProtectedRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/user-management" element={<UserManagement />} />
         <Route path="/user-management/create" element={<CreateUser />} />
+        <Route path="/user-management/edit/:id" element={<CreateUser />} />
         <Route path="/role-management" element={<ComingSoon page="Role Management" />} />
         <Route path="/crud-settings" element={<ComingSoon page="CRUD Settings" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
