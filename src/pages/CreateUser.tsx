@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import type { AppUser } from '../types';
 
 const ROLES: AppUser['role'][] = ['Super Admin', 'Admin', 'Supervisor', 'Field Officer'];
@@ -74,13 +74,44 @@ export default function CreateUser() {
   );
 
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   function set(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    if (!isEdit) {
+      try {
+        const res = await fetch('/api/create-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName: form.firstName,
+            lastName: form.lastName,
+            email: form.email,
+            role: form.role,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? 'Failed to create user. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        setError('Network error. Please check your connection and try again.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    setIsLoading(false);
     setSubmitted(true);
     setTimeout(() => navigate('/user-management'), 1500);
   }
@@ -92,7 +123,7 @@ export default function CreateUser() {
           <span className="text-green-600 text-xl">✓</span>
         </div>
         <p className="text-gray-700 font-medium">
-          User {isEdit ? 'updated' : 'created'} successfully!
+          User {isEdit ? 'updated' : 'created successfully — a welcome email has been sent'}!
         </p>
         <p className="text-sm text-gray-400">Redirecting to User Management…</p>
       </div>
@@ -219,6 +250,14 @@ export default function CreateUser() {
             </Field>
           </div>
 
+          {/* Error */}
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-100 text-red-600 text-sm px-3.5 py-2.5 rounded-lg">
+              <span className="shrink-0">⚠</span>
+              {error}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
@@ -230,9 +269,17 @@ export default function CreateUser() {
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-lg bg-[#1a6b4a] hover:bg-[#155c3e] text-white text-sm font-semibold transition"
+              disabled={isLoading}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#1a6b4a] hover:bg-[#155c3e] disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm font-semibold transition"
             >
-              {isEdit ? 'Update User' : 'Create User'}
+              {isLoading ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  {isEdit ? 'Updating…' : 'Creating…'}
+                </>
+              ) : (
+                isEdit ? 'Update User' : 'Create User'
+              )}
             </button>
           </div>
         </form>
