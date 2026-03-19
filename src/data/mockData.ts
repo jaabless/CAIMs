@@ -688,11 +688,11 @@ export const customers: Customer[] = [
 
 export const appUsers: AppUser[] = [
   { id: '1', firstName: 'Andrew', middleName: '', lastName: 'Backend', email: 'andrew@caims.com', sex: 'Male', phone: '0244000001', role: 'Field Officer', status: 'Active' },
-  { id: '2', firstName: 'Admin', middleName: '', lastName: 'User', email: 'admin@caims.com', sex: 'Male', phone: '0244000002', role: 'Administrator', status: 'Active' },
+  { id: '2', firstName: 'Admin', middleName: '', lastName: 'User', email: 'admin@caims.com', sex: 'Male', phone: '0244000002', role: 'Super Admin', status: 'Active' },
   { id: '3', firstName: 'Abena', middleName: 'Oforiwaa', lastName: 'Mensah', email: 'abena.mensah@caims.com', sex: 'Female', phone: '0554123456', role: 'Field Officer', status: 'Active' },
   { id: '4', firstName: 'Kwame', middleName: 'Atta', lastName: 'Boateng', email: 'kwame.boateng@caims.com', sex: 'Male', phone: '0201987654', role: 'Supervisor', status: 'Active' },
   { id: '5', firstName: 'Efua', middleName: '', lastName: 'Asante', email: 'efua.asante@caims.com', sex: 'Female', phone: '0277654321', role: 'Field Officer', status: 'Inactive' },
-  { id: '6', firstName: 'Kofi', middleName: 'Nti', lastName: 'Darko', email: 'kofi.darko@caims.com', sex: 'Male', phone: '0243567890', role: 'Analyst', status: 'Active' },
+  { id: '6', firstName: 'Kofi', middleName: 'Nti', lastName: 'Darko', email: 'kofi.darko@caims.com', sex: 'Male', phone: '0243567890', role: 'Admin', status: 'Active' },
   { id: '7', firstName: 'Ama', middleName: 'Serwaa', lastName: 'Owusu', email: 'ama.owusu@caims.com', sex: 'Female', phone: '0501234567', role: 'Field Officer', status: 'Active' },
   { id: '8', firstName: 'Yaw', middleName: '', lastName: 'Amponsah', email: 'yaw.amponsah@caims.com', sex: 'Male', phone: '0261122334', role: 'Supervisor', status: 'Inactive' },
 ];
